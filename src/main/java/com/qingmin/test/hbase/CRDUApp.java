@@ -2,10 +2,13 @@ package com.qingmin.test.hbase;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 
 //import javax.security.auth.login.Configuration;
 
@@ -19,7 +22,15 @@ import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -30,7 +41,7 @@ public class CRDUApp {
 	
 	private static final String TABLE_NAME = "MY_TABLE_NAME_TOO";
 	  private static final String CF_DEFAULT = "DEFAULT_COLUMN_FAMILY";
-	  
+	  private static boolean exists = false;
     public static void main( String[] args ){
     	
     	String a = "C:\\GitHubWorkspace\\test.hbase\\src\\mainresources\\core-site.xml";
@@ -58,12 +69,149 @@ public class CRDUApp {
         //deleteSchema(configuration); 
         //allMethodSchema(configuration);
         
-        listSchemaTables(configuration);
-
-	
-        
+        //listSchemaTables(configuration);
+        //addRecords(configuration);
+//        getRecords(configuration);
+//        exists = isExists(configuration);
+//        System.out.println("exists " + exists);
+//     
+//		scanTable(configuration);
+        //queryByFilter(configuration);
+        deleteDatas(configuration);
         
     }
+    
+    /**
+     * 安装条件检索数据
+     * @param connection
+     */
+    private static void queryByFilter(Configuration config) {
+        // 简单分页过滤器示例程序
+        Filter filter = new PageFilter(15);     // 每页15条数据
+        int totalRows = 0;
+        byte [] lastRow = null;
+         
+        Scan scan = new Scan();
+        scan.setFilter(filter);
+         
+        // 略
+        TableName tableName = TableName.valueOf(TABLE_NAME);
+        Connection connection;
+    	try {
+			connection = ConnectionFactory.createConnection(config);
+			Table table = connection.getTable(tableName);
+			ResultScanner resultScanner = table.getScanner(scan);
+			Iterator<Result> iterator = resultScanner.iterator();
+			
+			while(iterator.hasNext()){
+			   System.out.println(iterator.next()+", ");
+			}
+			
+			
+    	}catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    }
+     
+    /**
+     * 删除数据
+     * @param connection
+     * @throws IOException 
+     */
+    private static void deleteDatas(Configuration config){
+        TableName tableName = TableName.valueOf("qingmin");
+        byte [] family = Bytes.toBytes("cf");
+        byte [] row = Bytes.toBytes("rk1");
+        Delete delete = new Delete(row);
+         
+        // @deprecated Since hbase-1.0.0. Use {@link #addColumn(byte[], byte[])}
+        // delete.deleteColumn(family, qualifier);            // 删除某个列的某个版本
+        delete.addColumn(family, Bytes.toBytes("age"),Long.parseLong("1475402599329"));
+         
+        // @deprecated Since hbase-1.0.0. Use {@link #addColumns(byte[], byte[])}
+        // delete.deleteColumns(family, qualifier)            // 删除某个列的所有版本
+         
+        // @deprecated Since 1.0.0. Use {@link #(byte[])}
+        // delete.addFamily(family);                           // 删除某个列族
+        Connection connection;
+    	try {
+			connection = ConnectionFactory.createConnection(config);
+	        Table table = connection.getTable(tableName);
+	        table.delete(delete);
+	        System.out.println("Table " + tableName.getNameAsString() + " delete data succesfully");
+    	}catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    }
+    
+    private static boolean isExists (Configuration config){
+        /**
+         * org.apache.hadoop.hbase.TableName为为代表了表名字的Immutable POJO class对象,
+         * 形式为<table namespace>:<table qualifier>。
+         *   static TableName  valueOf(byte[] fullName) 
+         *  static TableName valueOf(byte[] namespace, byte[] qualifier) 
+         *  static TableName valueOf(ByteBuffer namespace, ByteBuffer qualifier) 
+         *  static TableName valueOf(String name) 
+         *  static TableName valueOf(String namespaceAsString, String qualifierAsString) 
+         * HBase系统默认定义了两个缺省的namespace
+         *     hbase：系统内建表，包括namespace和meta表
+         *     default：用户建表时未指定namespace的表都创建在此
+         * 在HBase中，namespace命名空间指对一组表的逻辑分组，类似RDBMS中的database，方便对表在业务上划分。
+         * 
+        */ 
+        TableName tableName = TableName.valueOf(TABLE_NAME);
+        Connection connection;
+    	try {
+			connection = ConnectionFactory.createConnection(config);
+			Admin admin = connection.getAdmin();
+	        boolean exists = admin.tableExists(tableName);
+	        if (exists) {
+	        	exists = true;
+	        	System.out.println("Table " + tableName.getNameAsString() + " already exists.");
+	        } else {
+	        	exists = false;
+	        	System.out.println("Table " + tableName.getNameAsString() + " not exists.");
+	        }
+	        return exists;
+    	}catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	return exists;
+    }
+    
+    /**
+     * 检索数据-表扫描
+     * @param connection
+     * @throws IOException 
+     */
+    private static void scanTable(Configuration config){
+        TableName tableName = TableName.valueOf(TABLE_NAME);
+        byte [] family = Bytes.toBytes(CF_DEFAULT);         
+        Scan scan = new Scan();
+        scan.addFamily(family);
+        Connection connection;
+    	try {
+			connection = ConnectionFactory.createConnection(config);
+	        Table table = connection.getTable(tableName);
+	        ResultScanner resultScanner = table.getScanner(scan);
+	        for (Iterator<Result> it = resultScanner.iterator(); it.hasNext(); ) {
+	            Result result = it.next();
+	            List<Cell> cells = result.listCells();
+	            for (Cell cell : cells) {
+	                String qualifier = new String(CellUtil.cloneQualifier(cell));
+	                String value = new String(CellUtil.cloneValue(cell), "UTF-8");
+	                System.out.println(qualifier + "\t" + value);
+	            }
+	        }
+    	}catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    }
+    
     
     public static void listSchemaTables(Configuration config){
     	TableName tableName = TableName.valueOf(TABLE_NAME);
@@ -97,13 +245,51 @@ public class CRDUApp {
 		}
     }
     
-    public static void addOneRecord(Configuration config){
+    public static void addRecords(Configuration config){
     	TableName tableName = TableName.valueOf(TABLE_NAME);
     	Connection connection;
     	try {
 			connection = ConnectionFactory.createConnection(config);   //HTablePool源码说要用HConnectionManager，如下:@deprecated as of 0.98.1. See {@link HConnection#getTable(String)}.，HConnectionManager源码提示说要用ConnectionFactory@deprecated Please use ConnectionFactory instead，这里的ConnectionFactory就是0.98版本的HTablePool
 			Admin admin = connection.getAdmin();
-			HTablePool hTablePool = new HTablePool();
+			//HTableDescriptor table= new HTableDescriptor(tableName);
+			//Put put = new Put(rowKey.getBytes());
+			/**
+			   * Add the specified column and value to this Put operation.
+			   * @param family family name
+			   * @param qualifier column qualifier
+			   * @param value column value
+			   * @return this
+			   * @deprecated Since 1.0.0. Use {@link #addColumn(byte[], byte[], byte[])}
+			   */
+			//put.add(TABLE_NAME.getBytes(),CF_DEFAULT.getBytes(),value.getBytes());
+			//put.addColumn(TABLE_NAME.getBytes(),CF_DEFAULT.getBytes(),value.getBytes());
+			//HColumnDescriptor newColumn = new HColumnDescriptor(CF_DEFAULT);
+            //newColumn.sesetValue(C_DEFAULT.getBytes(), )
+            //admin.addColumn(tableName, newColumn);
+			
+			
+			String [] rows = {"baidu.com", "alibaba.com"};
+	        String [] columns = {"owner", "ipstr", "access_server", "reg_date", "exp_date"};
+	        String [][] values = {
+	            {"Beijing Baidu Technology Co.", "220.181.57.217", "Beijing", "1999-10-11", "2015-10-11"}, 
+	            {"Hangzhou Alibaba Advertising Co.", "205.204.101.42", "Hangzhou", "1999=04-15", "2022-05-23"}
+	        };
+	        
+	        byte [] family = Bytes.toBytes(CF_DEFAULT);
+	        Table table = connection.getTable(tableName);   //这里的Table就是之前的HTableInterface
+	        for (int i = 0; i < rows.length; i++) {
+	            System.out.println("========================" + rows[i]);
+	            byte [] rowkey = Bytes.toBytes(rows[i]);
+	            Put put = new Put(rowkey);
+	            for (int j = 0; j < columns.length; j++) {
+	                byte [] qualifier = Bytes.toBytes(columns[j]);
+	                byte [] value = Bytes.toBytes(values[i][j]);
+	                put.addColumn(family, qualifier, value);
+	            }
+	            table.put(put);
+	        }
+	        table.close();
+	        connection.close();
 	    	
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -111,6 +297,32 @@ public class CRDUApp {
 		}
     }
     
+    public static void getRecords(Configuration config){
+    	TableName tableName = TableName.valueOf(TABLE_NAME);
+    	Connection connection;
+    	try {
+			connection = ConnectionFactory.createConnection(config);
+			Admin admin = connection.getAdmin();
+	        byte [] family = Bytes.toBytes(CF_DEFAULT);
+	        byte [] row = Bytes.toBytes("baidu.com");
+	        Table table = connection.getTable(tableName);
+	         
+	        Get get = new Get(row);
+	        get.addFamily(family);
+	        // 也可以通过addFamily或addColumn来限定查询的数据
+	        Result result = table.get(get);
+	        List<Cell> cells = result.listCells();
+	        for (Cell cell : cells) {
+	            String qualifier = new String(CellUtil.cloneQualifier(cell));
+	            String value = new String(CellUtil.cloneValue(cell), "UTF-8");
+	            System.out.println(qualifier + "\t" + value);
+	        }
+    	}catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+		}
+    	
+    }
     public static void createSchemaTables(Configuration config){
         Connection connection;
 		try {
@@ -209,6 +421,7 @@ public class CRDUApp {
 	        // Delete a table (Need to be disabled first)
 	        admin.deleteTable(tableName);
 	        admin.close();
+	        connection.close();
  		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -260,6 +473,7 @@ public class CRDUApp {
           admin.deleteTable(tableName);
           System.out.print("ALL-delete table done. ");
           admin.close();
+          connection.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
