@@ -29,8 +29,11 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.PageFilter;
+import org.apache.hadoop.hbase.filter.RegexStringComparator;
+import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -76,8 +79,8 @@ public class CRDUApp {
 //        System.out.println("exists " + exists);
 //     
 //		scanTable(configuration);
-        //queryByFilter(configuration);
-        deleteDatas(configuration);
+        queryByFilter(configuration);
+        //deleteDatas(configuration);
         
     }
     
@@ -90,9 +93,16 @@ public class CRDUApp {
         Filter filter = new PageFilter(15);     // 每页15条数据
         int totalRows = 0;
         byte [] lastRow = null;
-         
+        
+        //RowFilter rowFilter = new RowFilter(CompareOp.EQUAL,new RegexStringComparator("\\d*[:]201303\\d*$"));  也有这种过滤器
+        
         Scan scan = new Scan();
         scan.setFilter(filter);
+        
+        /**
+         * scan.setStartRow(Bytes.toBytes("15002159264"));
+         * scan.setStopRow(Bytes.toBytes("18002159264"));
+         * */
          
         // 略
         TableName tableName = TableName.valueOf(TABLE_NAME);
@@ -101,10 +111,15 @@ public class CRDUApp {
 			connection = ConnectionFactory.createConnection(config);
 			Table table = connection.getTable(tableName);
 			ResultScanner resultScanner = table.getScanner(scan);
-			Iterator<Result> iterator = resultScanner.iterator();
-			
-			while(iterator.hasNext()){
-			   System.out.println(iterator.next()+", ");
+//			Iterator<Result> iterator = resultScanner.iterator();
+//			
+//			while(iterator.hasNext()){
+//			   System.out.println(iterator.next()+", ");
+//			}
+			for(Result rs : resultScanner){
+				for(Cell cell : rs.rawCells()){
+					System.out.println(cell.toString());
+				}
 			}
 			
 			
