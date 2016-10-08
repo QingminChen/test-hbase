@@ -15,6 +15,7 @@ import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.TableName;
@@ -34,6 +35,8 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.RowFilter;
+import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -135,6 +138,9 @@ public class CRDUApp {
      * @throws IOException 
      */
     private static void deleteDatas(Configuration config){
+//    	HRegionInfo hRegionInfo= new HRegionInfo();
+//    	HRegionServer hRegionServer = new HRegionServer(config);
+//    	HRegion hRegion = new HRegion();
         TableName tableName = TableName.valueOf("qingmin");
         byte [] family = Bytes.toBytes("cf");
         byte [] row = Bytes.toBytes("rk1");
